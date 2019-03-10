@@ -20,6 +20,7 @@ class WebBrowserApplet;
 } // namespace Core::Frontend
 
 namespace FileSys {
+class CheatList;
 class VfsFilesystem;
 } // namespace FileSys
 
@@ -253,6 +254,9 @@ public:
 
     std::shared_ptr<FileSys::VfsFilesystem> GetFilesystem() const;
 
+    void RegisterCheatList(const std::vector<FileSys::CheatList>& list, const std::string& build_id,
+                           VAddr code_region_start, VAddr code_region_end);
+
     void SetProfileSelector(std::unique_ptr<Frontend::ProfileSelectApplet> applet);
 
     const Frontend::ProfileSelectApplet& GetProfileSelector() const;
@@ -291,10 +295,6 @@ private:
 
 inline ARM_Interface& CurrentArmInterface() {
     return System::GetInstance().CurrentArmInterface();
-}
-
-inline TelemetrySession& Telemetry() {
-    return System::GetInstance().TelemetrySession();
 }
 
 inline Kernel::Process* CurrentProcess() {

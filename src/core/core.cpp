@@ -32,6 +32,7 @@
 #include "core/perf_stats.h"
 #include "core/settings.h"
 #include "core/telemetry_session.h"
+#include "file_sys/cheat_engine.h"
 #include "frontend/applets/profile_select.h"
 #include "frontend/applets/software_keyboard.h"
 #include "frontend/applets/web_browser.h"
@@ -79,6 +80,7 @@ FileSys::VirtualFile GetGameFileFromPath(const FileSys::VirtualFilesystem& vfs,
     return vfs->OpenFile(path, FileSys::Mode::Read);
 }
 struct System::Impl {
+    explicit Impl(System& system) : kernel{system} {}
 
     Cpu& CurrentCpuCore() {
         return cpu_core_manager.GetCurrentCore();
@@ -96,7 +98,7 @@ struct System::Impl {
         LOG_DEBUG(HW_Memory, "initialized OK");
 
         core_timing.Initialize();
-        kernel.Initialize(core_timing);
+        kernel.Initialize();
 
         const auto current_time = std::chrono::duration_cast<std::chrono::seconds>(
             std::chrono::system_clock::now().time_since_epoch());
@@ -189,13 +191,13 @@ struct System::Impl {
 
     void Shutdown() {
         // Log last frame performance stats
-        auto perf_results = GetAndResetPerfStats();
-        Telemetry().AddField(Telemetry::FieldType::Performance, "Shutdown_EmulationSpeed",
-                             perf_results.emulation_speed * 100.0);
-        Telemetry().AddField(Telemetry::FieldType::Performance, "Shutdown_Framerate",
-                             perf_results.game_fps);
-        Telemetry().AddField(Telemetry::FieldType::Performance, "Shutdown_Frametime",
-                             perf_results.frametime * 1000.0);
+        const auto perf_results = GetAndResetPerfStats();
+        telemetry_session->AddField(Telemetry::FieldType::Performance, "Shutdown_EmulationSpeed",
+                                    perf_results.emulation_speed * 100.0);
+        telemetry_session->AddField(Telemetry::FieldType::Performance, "Shutdown_Framerate",
+                                    perf_results.game_fps);
+        telemetry_session->AddField(Telemetry::FieldType::Performance, "Shutdown_Frametime",
+                                    perf_results.frametime * 1000.0);
 
         is_powered_on = false;
 
@@ -204,6 +206,7 @@ struct System::Impl {
         GDBStub::Shutdown();
         Service::Shutdown();
         service_manager.reset();
+        cheat_engine.reset();
         telemetry_session.reset();
         gpu_core.reset();
 
@@ -254,6 +257,8 @@ struct System::Impl {
     CpuCoreManager cpu_core_manager;
     bool is_powered_on = false;
 
+    std::unique_ptr<FileSys::CheatEngine> cheat_engine;
+
     /// Frontend applets
     std::unique_ptr<Core::Frontend::ProfileSelectApplet> profile_selector;
     std::unique_ptr<Core::Frontend::SoftwareKeyboardApplet> software_keyboard;
@@ -272,7 +277,7 @@ struct System::Impl {
     Core::FrameLimiter frame_limiter;
 };
 
-System::System() : impl{std::make_unique<Impl>()} {}
+System::System() : impl{std::make_unique<Impl>(*this)} {}
 System::~System() = default;
 
 Cpu& System::CurrentCpuCore() {
@@ -450,6 +455,13 @@ void System::SetGPUDebugContext(std::shared_ptr<Tegra::DebugContext> context) {
 
 Tegra::DebugContext* System::GetGPUDebugContext() const {
     return impl->debug_context.get();
+}
+
+void System::RegisterCheatList(const std::vector<FileSys::CheatList>& list,
+                               const std::string& build_id, VAddr code_region_start,
+                               VAddr code_region_end) {
+    impl->cheat_engine =
+        std::make_unique<FileSys::CheatEngine>(list, build_id, code_region_start, code_region_end);
 }
 
 void System::SetFilesystem(std::shared_ptr<FileSys::VfsFilesystem> vfs) {

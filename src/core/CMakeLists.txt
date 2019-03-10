@@ -31,6 +31,8 @@ add_library(core STATIC
     file_sys/bis_factory.h
     file_sys/card_image.cpp
     file_sys/card_image.h
+    file_sys/cheat_engine.cpp
+    file_sys/cheat_engine.h
     file_sys/content_archive.cpp
     file_sys/content_archive.h
     file_sys/control_metadata.cpp
@@ -217,6 +219,7 @@ add_library(core STATIC
     hle/service/audio/audren_u.h
     hle/service/audio/codecctl.cpp
     hle/service/audio/codecctl.h
+    hle/service/audio/errors.h
     hle/service/audio/hwopus.cpp
     hle/service/audio/hwopus.h
     hle/service/bcat/bcat.cpp

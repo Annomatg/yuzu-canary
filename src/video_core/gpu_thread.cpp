@@ -2,6 +2,7 @@
 // Licensed under GPLv2 or any later version
 // Refer to the license.txt file included.
 
+#include "common/assert.h"
 #include "common/microprofile.h"
 #include "core/frontend/scope_acquire_window_context.h"
 #include "core/settings.h"
